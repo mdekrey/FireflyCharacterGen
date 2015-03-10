@@ -329,6 +329,7 @@ var Firefly;
         };
         CharacterCreationController.prototype.create = function () {
             this.$http.post('/api/generation/character', this.character).success(function (data) {
+                window.open('/api/generation/download/' + data);
             });
         };
         CharacterCreationController.$inject = ['$scope', 'distinctions', 'skillList', 'bioGenerator', '$http'];
