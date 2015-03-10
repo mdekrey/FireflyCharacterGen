@@ -74,6 +74,9 @@ var Firefly;
     })();
     var Attributes = (function () {
         function Attributes() {
+            this.physical = undefined;
+            this.mental = undefined;
+            this.social = undefined;
         }
         return Attributes;
     })();
@@ -81,7 +84,7 @@ var Firefly;
         function Skill(name) {
             this.rating = DieCode.d4;
             if (!_.contains(skillList, name)) {
-                throw new Error('Invalid skill name');
+                throw new Error('Invalid skill name: ' + name);
             }
             this.name = name;
         }
@@ -106,6 +109,9 @@ var Firefly;
             this.skills = [];
             this.signatureAssets = [];
         }
+        Character.prototype.highlightedSkills = function () {
+            return _(this.distinctions).map(function (d) { return d.highlightedSkills; }).flatten().unique().value();
+        };
         Character.prototype.addDistinction = function (distinction) {
             if (this.distinctions.length < 3) {
                 this.distinctions.push(distinction);
@@ -124,6 +130,7 @@ var Firefly;
                 return result;
             var result = new Skill(skillName);
             this.skills.push(result);
+            this.skills = _.sortBy(this.skills, 'name');
             return result;
         };
         Character.prototype.addSignatureAsset = function () {
@@ -150,6 +157,60 @@ var Firefly;
         }
         CharacterCreationController.prototype.generateName = function () {
             this.character.bio = this.bioGenerator('');
+        };
+        CharacterCreationController.prototype.generateAttributes = function () {
+            var dieCodes = _([DieCode.d6, DieCode.d8, DieCode.d10]);
+            for (var attribute in this.character.attributes) {
+                if (!this.character.attributes[attribute]) {
+                    var options = dieCodes.filter(this.attributesOptions(attribute)).value();
+                    var index = _.random(options.length - 1);
+                    this.character.attributes[attribute] = options[index];
+                }
+            }
+        };
+        CharacterCreationController.prototype.generateDistinctions = function () {
+            while (this.allowAddDistinction()) {
+                var categories = _(this.character.distinctions).pluck('category').unique().value();
+                var availableDistinctions = _.filter(this.distinctions.all(), function (d) { return !_.contains(categories, d.category); });
+                this.character.addDistinction(availableDistinctions[_.random(availableDistinctions.length - 1)]);
+            }
+            while (this.needsDistinctionTriggers()) {
+                var distinctionIndex = _.random(this.character.selectedTriggers.length - 1);
+                var triggerIndex = _.random(this.character.selectedTriggers[distinctionIndex].length - 1);
+                this.character.selectedTriggers[distinctionIndex][triggerIndex] = true;
+            }
+        };
+        CharacterCreationController.prototype.generateSkills = function () {
+            var _this = this;
+            while (this.needsSkills()) {
+                var existingSkills = _(this.character.skills).pluck('name').filter(function (skillName) { return _this.canStepUp(skillName); }).value();
+                var availableSkills = _.filter(skillList, function (skillName) { return _this.canStepUp(skillName); }).concat(existingSkills).concat(existingSkills).concat(existingSkills).concat(existingSkills);
+                var index = _.random(availableSkills.length - 1);
+                console.log(availableSkills, index);
+                var skillName = availableSkills[index];
+                console.log(skillName);
+                this.stepUpSkill(this.character.addSkill(skillName));
+            }
+        };
+        CharacterCreationController.prototype.generateAssets = function () {
+            while (this.needsAssetsOrSpecialities()) {
+                switch (_.random(3)) {
+                    case 0:
+                        var existingSkills = _(this.character.skills).filter(function (skill) { return !skill.boughtSpeciality && skill.allowSpeciality(); }).value();
+                        this.buySpeciality(existingSkills[_.random(existingSkills.length - 1)]);
+                        break;
+                    case 1:
+                    case 2:
+                        var existingAssets = _.filter(this.character.signatureAssets, function (asset) { return asset.rating.sideCount() < 8; });
+                        if (existingAssets.length > 0) {
+                            this.stepUpAsset(existingAssets[_.random(existingAssets.length - 1)]);
+                            break;
+                        }
+                    case 3:
+                        this.addSignatureAsset();
+                        break;
+                }
+            }
         };
         CharacterCreationController.prototype.genderText = function (gender) {
             return Firefly.names.Gender[gender];
@@ -188,22 +249,30 @@ var Firefly;
         CharacterCreationController.prototype.addSkill = function (skillName) {
             this.character.addSkill(skillName);
         };
+        CharacterCreationController.prototype.skillPointCost = function (skillName) {
+            return _.contains(this.character.highlightedSkills(), skillName) ? 1 : 2;
+        };
+        CharacterCreationController.prototype.skillPointsUsed = function () {
+            var _this = this;
+            return _(this.steppedUpSkills).reduce(function (result, skillName) { return result + _this.skillPointCost(skillName); }, 0);
+        };
         CharacterCreationController.prototype.stepUpSkill = function (skill) {
-            if (this.canStepUp(skill)) {
+            if (this.canStepUp(skill.name)) {
                 skill.rating = skill.rating.stepUp();
                 this.steppedUpSkills.push(skill.name);
                 return true;
             }
             return false;
         };
-        CharacterCreationController.prototype.canStepUp = function (skill) {
-            return skill.rating.sideCount() < 12 && this.steppedUpSkills.length < 9 && this.character.distinctions.length >= 3;
+        CharacterCreationController.prototype.canStepUp = function (skillName) {
+            var skill = _.find(this.character.skills, { name: skillName });
+            return (!skill || skill.rating.sideCount() < 12) && this.skillPointsUsed() + this.skillPointCost(skillName) <= 9 && this.character.distinctions.length >= 3;
         };
-        CharacterCreationController.prototype.canStepBack = function (skill) {
-            return _.contains(this.steppedUpSkills, skill.name);
+        CharacterCreationController.prototype.canStepBack = function (skillName) {
+            return _.contains(this.steppedUpSkills, skillName);
         };
         CharacterCreationController.prototype.stepBackSkill = function (skill) {
-            if (this.canStepBack(skill)) {
+            if (this.canStepBack(skill.name)) {
                 var idx = _.indexOf(this.steppedUpSkills, skill.name);
                 skill.rating = skill.rating.stepBack();
                 this.steppedUpSkills.splice(idx, 1);
@@ -252,7 +321,7 @@ var Firefly;
             return !(this.character.attributes.physical && this.character.attributes.mental && this.character.attributes.social && true);
         };
         CharacterCreationController.prototype.needsSkills = function () {
-            return this.steppedUpSkills.length < 9;
+            return this.skillPointsUsed() < 9;
         };
         CharacterCreationController.prototype.isFinished = function () {
             return !this.needsAttribute() && !this.needsAssetsOrSpecialities() && !this.needsSkills() && !this.needsDistinctionTriggers() && !this.needsDistinction();

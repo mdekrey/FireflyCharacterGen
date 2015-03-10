@@ -83,9 +83,9 @@ module Firefly {
 	}
 
 	class Attributes {
-		physical: DieCode;
-		mental: DieCode;
-		social: DieCode;
+		physical: DieCode = undefined;
+		mental: DieCode = undefined;
+		social: DieCode = undefined;
 	}
 
 	class Skill {
@@ -96,7 +96,7 @@ module Firefly {
 
 		constructor(name: string) {
 			if (!_.contains(skillList, name)) {
-				throw new Error('Invalid skill name');
+				throw new Error('Invalid skill name: ' + name);
 			}
 			this.name = name;
 		}
@@ -120,6 +120,10 @@ module Firefly {
 		skills: Skill[] = [];
 		signatureAssets: SignatureAsset[] = [];
 
+		highlightedSkills(): string[]{
+			return <string[]> _(this.distinctions).map(d => d.highlightedSkills).flatten().unique().value();
+		}
+
 		addDistinction(distinction: distinctions.Distinction): boolean {
 			if (this.distinctions.length < 3) {
 				this.distinctions.push(distinction);
@@ -139,6 +143,7 @@ module Firefly {
 				return result;
 			var result = new Skill(skillName);
 			this.skills.push(result);
+			this.skills = _.sortBy(this.skills, 'name');
 			return result;
 		}
 
@@ -148,18 +153,18 @@ module Firefly {
 			return result;
 		}
 	}
-
+	
 	class CharacterCreationController {
 		private $scope: ng.IScope;
 		dieCodes: DieCode[] = DieCode.availableDieCodes();
 		character: Character = new Character();
 		distinctions: distinctions.DistinctionSet;
 		distinctionPreview: distinctions.Distinction;
-		skillList: string[];
-		steppedUpSkills: string[] = [];
-		specialityCount: number = 0;
+		private skillList: string[];
+		private steppedUpSkills: string[] = [];
+		private specialityCount: number = 0;
 		showNeeds: boolean = false;
-		bioGenerator: (system: string) => names.Bio;
+		private bioGenerator: (system: string) => names.Bio;
 
 		static $inject = ['$scope', 'distinctions', 'skillList', 'bioGenerator'];
 
@@ -172,6 +177,69 @@ module Firefly {
 
 		generateName(): void {
 			this.character.bio = this.bioGenerator('');
+		}
+
+		generateAttributes(): void {
+			var dieCodes = _([DieCode.d6, DieCode.d8, DieCode.d10]);
+			for (var attribute in this.character.attributes) {
+				if (!this.character.attributes[attribute]) {
+					var options = dieCodes.filter(this.attributesOptions(attribute)).value();
+					var index = _.random(options.length - 1);
+					this.character.attributes[attribute] = options[index];
+				}
+			}
+		}
+
+		generateDistinctions(): void {
+			while (this.allowAddDistinction()) {
+				var categories = _(this.character.distinctions).pluck('category').unique().value();
+				var availableDistinctions = _.filter(this.distinctions.all(), d => !_.contains(categories, d.category));
+
+				this.character.addDistinction(availableDistinctions[_.random(availableDistinctions.length - 1)]);
+			}
+
+			while (this.needsDistinctionTriggers()) {
+				var distinctionIndex: number = _.random(this.character.selectedTriggers.length - 1);
+				var triggerIndex: number = _.random(this.character.selectedTriggers[distinctionIndex].length - 1);
+				this.character.selectedTriggers[distinctionIndex][triggerIndex] = true;
+			}
+		}
+
+		generateSkills(): void {
+			while (this.needsSkills()) {
+				var existingSkills = <string[]> _(this.character.skills).pluck('name').filter((skillName:string) => this.canStepUp(skillName)).value();
+				var availableSkills = _.filter(skillList, skillName => this.canStepUp(skillName))
+					.concat(existingSkills).concat(existingSkills).concat(existingSkills).concat(existingSkills);
+
+				var index = _.random(availableSkills.length - 1);
+				console.log(availableSkills, index);
+				var skillName = availableSkills[index];
+				console.log(skillName);
+
+				this.stepUpSkill(this.character.addSkill(skillName));
+			}
+		}
+
+		generateAssets(): void {
+			while (this.needsAssetsOrSpecialities()) {
+				switch (_.random(3)) {
+					case 0:
+						var existingSkills = _(this.character.skills).filter((skill: Skill) => !skill.boughtSpeciality && skill.allowSpeciality()).value();
+						this.buySpeciality(existingSkills[_.random(existingSkills.length - 1)]);
+						break;
+					case 1:
+					case 2:
+						var existingAssets = _.filter(this.character.signatureAssets, (asset: SignatureAsset) => asset.rating.sideCount() < 8);
+						if (existingAssets.length > 0) {
+							this.stepUpAsset(existingAssets[_.random(existingAssets.length - 1)]);
+							break;
+						}
+					case 3:
+						this.addSignatureAsset();
+						break;
+				}
+
+			}
 		}
 
 		genderText(gender: names.Gender): string {
@@ -217,8 +285,16 @@ module Firefly {
 			this.character.addSkill(skillName);
 		}
 
+		skillPointCost(skillName: string): number {
+			return _.contains(this.character.highlightedSkills(), skillName) ? 1 : 2;
+		}
+
+		skillPointsUsed(): number {
+			return _(this.steppedUpSkills).reduce((result: number, skillName: string) =>  result + this.skillPointCost(skillName), 0);
+		}
+
 		stepUpSkill(skill: Skill): boolean {
-			if (this.canStepUp(skill)) {
+			if (this.canStepUp(skill.name)) {
 				skill.rating = skill.rating.stepUp();
 				this.steppedUpSkills.push(skill.name);
 				return true;
@@ -226,16 +302,17 @@ module Firefly {
 			return false;
 		}
 
-		canStepUp(skill: Skill): boolean {
-			return skill.rating.sideCount() < 12 && this.steppedUpSkills.length < 9 && this.character.distinctions.length >= 3;
+		canStepUp(skillName: string): boolean {
+			var skill = _.find(this.character.skills, { name: skillName });
+			return (!skill || skill.rating.sideCount() < 12) && this.skillPointsUsed() + this.skillPointCost(skillName) <= 9 && this.character.distinctions.length >= 3;
 		}
 
-		canStepBack(skill: Skill): boolean {
-			return _.contains(this.steppedUpSkills, skill.name);
+		canStepBack(skillName: string): boolean {
+			return _.contains(this.steppedUpSkills, skillName);
 		}
 
 		stepBackSkill(skill: Skill): boolean {
-			if (this.canStepBack(skill)) {
+			if (this.canStepBack(skill.name)) {
 				var idx = _.indexOf(this.steppedUpSkills, skill.name);
 				skill.rating = skill.rating.stepBack();
 				this.steppedUpSkills.splice(idx, 1);
@@ -291,7 +368,7 @@ module Firefly {
 		}
 		needsAssetsOrSpecialities: () => boolean = this.canBuySpeciality;
 		needsSkills(): boolean {
-			return this.steppedUpSkills.length < 9;
+			return this.skillPointsUsed() < 9;
 		}
 		needsDistinctionTriggers: () => boolean = this.allowAddTrigger;
 		needsDistinction: () => boolean = this.allowAddDistinction;

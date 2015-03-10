@@ -410,25 +410,22 @@
 		name: string;
 		system: string;
 	}
-
-	function rand(max: number): number {
-		return Math.floor(Math.random() * max);
-	}
-
+	
 	var fireflyNameModule = angular.module('fireflyNames', []);
 	fireflyNameModule.factory('names',() => systems);
 	fireflyNameModule.factory('bioGenerator',() => (system: string = ''): Bio => {
 		var nameSet = _.find(systems, { system: system });
 		if (!nameSet) {
-			nameSet = systems[rand(systems.length)];
+			nameSet = systems[_.random(systems.length - 1)];
 		}
 
-		var gender = rand(2) == 0 ? Gender.Male : Gender.Female;
+		var gender = _.random(2 - 1) == 0 ? Gender.Male : Gender.Female;
 
 		return {
 			gender: gender,
 			system: nameSet.system,
-			name: (gender == Gender.Male ? nameSet.maleNames[rand(nameSet.maleNames.length)] : nameSet.femaleNames[rand(nameSet.femaleNames.length)]) + ' ' + nameSet.surnames[rand(nameSet.surnames.length)],
+			name: (gender == Gender.Male ? nameSet.maleNames[_.random(nameSet.maleNames.length - 1)] : nameSet.femaleNames[_.random(nameSet.femaleNames.length - 1)])
+				+ ' ' + nameSet.surnames[_.random(nameSet.surnames.length - 1)],
 		}
 	});
 

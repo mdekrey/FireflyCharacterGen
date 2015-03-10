@@ -19,7 +19,7 @@
 <body ng-app="firefly">
 	<div ng-controller="fireflyCharacterCreationController as controller">
 		<div>
-			<input type="text" ng-model="controller.character.bio.name" class="characterNameHeading"/>
+			<input type="text" ng-model="controller.character.bio.name" class="characterNameHeading" placeholder="(Name)"/>
 			<small>
 				<button ng-click="controller.generateName()">Generate</button>
 				{{controller.character.bio.system}}
@@ -28,7 +28,10 @@
 			</small>
 		</div>
 		<div>
-			<h3>Attributes</h3>
+			<h3 ng-class="{needsSelection: controller.needsAttribute() && controller.showNeeds}">
+				Attributes
+				<button ng-if="controller.needsAttribute()" ng-click="controller.generateAttributes()">Generate</button>
+			</h3>
 			<p style="color: red;" ng-if="controller.needsAttribute() && controller.showNeeds"><em>You need to finish selecting attributes</em></p>
 			<ul class="compressedListing">
 				<li>
@@ -59,7 +62,10 @@
 		</div>
 
 		<div>
-			<h3>Distinctions</h3>
+			<h3 ng-class="{needsSelection: (controller.needsDistinction() || controller.needsDistinctionTriggers()) && controller.showNeeds}">
+				Distinctions
+				<button ng-if="(controller.needsDistinction() || controller.needsDistinctionTriggers())" ng-click="controller.generateDistinctions()">Generate</button>
+			</h3>
 			<p style="color: red;" ng-if="controller.needsDistinction() && controller.showNeeds"><em>You need to finish selecting distinctions</em></p>
 			<p style="color: red;" ng-if="controller.needsDistinctionTriggers() && controller.showNeeds"><em>You need to finish selecting distinction triggers</em></p>
 			<div ng-repeat="distinctionSlot in controller.character.distinctions track by $index" ng-init="distinctionIndex = $index" class="distinction">
@@ -85,7 +91,10 @@
 		</div>
 
 		<div>
-			<h3>Skills</h3>
+			<h3 ng-class="{needsSelection: controller.needsSkills() && controller.showNeeds}">
+				Skills
+				<button ng-if="controller.needsSkills()" ng-disabled="controller.needsDistinction()" ng-click="controller.generateSkills()">Generate</button>
+			</h3>
 			<p style="color: red;" ng-if="controller.needsSkills() && controller.showNeeds"><em>You need to finish selecting skills</em></p>
 			<p style="color: red;" ng-if="controller.needsAssetsOrSpecialities() && controller.showNeeds"><em>You need to finish selecting specialities or signature assets</em></p>
 			<select ng-options="skill for skill in controller.skills()" ng-model="addSkill" ng-change="controller.addSkill(addSkill); addSkill = null;"></select>
@@ -93,20 +102,23 @@
 				<li ng-repeat="skill in controller.character.skills">
 					<label>{{skill.name}}</label>
 					{{skill.rating.display()}}
-					<button ng-if="controller.canStepUp(skill)" ng-click="controller.stepUpSkill(skill)">+</button>
-					<button ng-if="controller.canStepBack(skill)" ng-click="controller.stepBackSkill(skill)">-</button>
+					<button ng-if="controller.canStepUp(skill.name)" ng-click="controller.stepUpSkill(skill)">+</button>
+					<button ng-if="controller.canStepBack(skill.name)" ng-click="controller.stepBackSkill(skill)">-</button>
 					<button ng-if="skill.allowSpeciality() && !skill.boughtSpeciality && controller.canBuySpeciality()" ng-click="controller.buySpeciality(skill)">Add Speciality</button>
-					<input ng-if="skill.boughtSpeciality" ng-model="skill.speciality" type="text" />
+					<input ng-if="skill.boughtSpeciality" ng-model="skill.speciality" type="text" placeholder="(Speciality)" />
 				</li>
 			</ul>
 		</div>
 
 		<div>
-			<h3>Signature Assets</h3>
+			<h3 ng-class="{needsSelection: controller.needsAssetsOrSpecialities() && controller.showNeeds}">
+				Signature Assets
+				<button ng-if="controller.needsAssetsOrSpecialities()" ng-click="controller.generateAssets()" ng-disabled="controller.needsSkills()">Generate</button>
+			</h3>
 			<p style="color: red;" ng-if="controller.needsAssetsOrSpecialities() && controller.showNeeds"><em>You need to finish selecting specialities or signature assets</em></p>
 			<p ng-if="!controller.character.signatureAssets.length"><em>None.</em></p>
 			<div ng-repeat="asset in controller.character.signatureAssets">
-				<input type="text" ng-model="asset.name" />
+				<input type="text" ng-model="asset.name" placeholder="(Signature Asset)" />
 				{{asset.rating.display()}} <button ng-click="controller.stepUpAsset(asset)">+</button>
 				<button ng-click="controller.stepBackAsset(asset)">-</button>
 			</div>

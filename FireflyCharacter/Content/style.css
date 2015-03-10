@@ -33,7 +33,10 @@ h3 {
 	font-size:.75em;
 	
 	text-transform: uppercase;
+}
 
+h3.needsSelection {
+	background-color: #BB9999;
 }
 
 ul.compressedListing {

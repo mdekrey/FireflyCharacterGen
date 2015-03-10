@@ -627,7 +627,7 @@
 					{ name: "Fighting Spirit", description: "Step up a Complication created to avoid being Taken Out in a fight to reroll your dice." },
 					{ name: "One-Two Punch", description: "Step up a Complication when you Take Out a Minor Gamemaster character to Take Out an additional Minor character." }
 				],
-				highlightedSkills: ["Focus", "Influence", "Know PERSONALITY DISTINCTIONS"],
+				highlightedSkills: ["Focus", "Influence", "Know"],
 				category: 'Role'
 			}
 		];
@@ -1256,7 +1256,7 @@
 				{ name: "Double Down", description: "Double your largest die in a pool before you roll. Step up a Complication to that die type or create one equal to that die type." },
 				{ name: "Cut Both Wires", description: "Step up one of your Complications to reroll a die after you’ve rolled. On your next roll, both 1s and 2s count for Complications." }
 			],
-			highlightedSkills: ["Drive", "Fight", "Shoot BACKGROUND DISTINCTIONS"],
+			highlightedSkills: ["Drive", "Fight", "Shoot"],
 			category: 'Personality'
 		},
 	];
