@@ -158,8 +158,8 @@ namespace FireflyCharacter.Controllers
 			var result = Request.CreateResponse(HttpStatusCode.OK);
 			result.Content = new StreamContent(new MemoryStream(pdfs[id]));
             result.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
-			result.Content.Headers.ContentDisposition = new System.Net.Http.Headers.ContentDispositionHeaderValue("attachment");
-			result.Content.Headers.ContentDisposition.FileName = "download.pdf";
+			//result.Content.Headers.ContentDisposition = new System.Net.Http.Headers.ContentDispositionHeaderValue("attachment");
+			//result.Content.Headers.ContentDisposition.FileName = "download.pdf";
 			return result;
 		}
 

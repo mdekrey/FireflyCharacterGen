@@ -83,9 +83,9 @@ module Firefly {
 	}
 
 	class Attributes {
-		physical: DieCode = undefined;
-		mental: DieCode = undefined;
-		social: DieCode = undefined;
+		physical: DieCode = null;
+		mental: DieCode = null;
+		social: DieCode = null;
 	}
 
 	class Skill {
@@ -137,6 +137,21 @@ module Firefly {
 			return false;
 		}
 
+		removeDistinction(distinction: distinctions.Distinction): boolean {
+			var idx = _.indexOf(this.distinctions, distinction);
+			if (idx == -1)
+				return false;
+			this.distinctions.splice(idx, 1);
+			this.selectedTriggers.splice(idx, 1);
+
+			for (var index in distinction.highlightedSkills) {
+				var highlightedSkill = this.addSkill(distinction.highlightedSkills[index]);
+				highlightedSkill.rating = highlightedSkill.rating.stepBack();
+			}
+
+			this.skills = _.filter(this.skills,(skill: Skill) => skill.rating.sideCount() > 4);
+		}
+
 		addSkill(skillName: string): Skill {
 			var result = _.find(this.skills, { name: skillName });
 			if (result)
@@ -166,6 +181,14 @@ module Firefly {
 		showNeeds: boolean = false;
 		private bioGenerator: (system: string) => names.Bio;
 		private $http: ng.IHttpService;
+		private attributePreGeneratedState : any;
+		private attributePostGeneratedState: any;
+		private distinctionsPreGeneratedState: any;
+		private distinctionsPostGeneratedState: any;
+		private skillsPreGeneratedState: string[];
+		private skillsPostGeneratedState: string[];
+		private assetsPreGeneratedState: any;
+		private assetsPostGeneratedState: any;
 
 		static $inject = ['$scope', 'distinctions', 'skillList', 'bioGenerator', '$http'];
 
@@ -180,8 +203,23 @@ module Firefly {
 		generateName(): void {
 			this.character.bio = this.bioGenerator('');
 		}
-
+		
 		generateAttributes(): void {
+			var getState = () => ({
+				physical: this.character.attributes.physical,
+				mental: this.character.attributes.mental,
+				social: this.character.attributes.social,
+			});
+
+			var state = getState();
+			if (angular.toJson(state) == angular.toJson(this.attributePostGeneratedState)) {
+				this.character.attributes.physical = this.attributePreGeneratedState.physical;
+				this.character.attributes.mental = this.attributePreGeneratedState.mental;
+				this.character.attributes.social = this.attributePreGeneratedState.social;
+			} else {
+				this.attributePreGeneratedState = state;
+			}
+
 			var dieCodes = _([DieCode.d6, DieCode.d8, DieCode.d10]);
 			for (var attribute in this.character.attributes) {
 				if (!this.character.attributes[attribute]) {
@@ -190,9 +228,24 @@ module Firefly {
 					this.character.attributes[attribute] = options[index];
 				}
 			}
+			this.attributePostGeneratedState = getState();
 		}
 
 		generateDistinctions(): void {
+			var getState = () => ({ distinctions: _.pluck(this.character.distinctions, 'name'), triggers: _.cloneDeep(this.character.selectedTriggers) });
+
+			var state = getState();
+			if (angular.toJson(state) == angular.toJson(this.distinctionsPostGeneratedState)) {
+				var toRemove = _.filter(this.character.distinctions, distinction => !_.contains(this.distinctionsPreGeneratedState.distinctions, distinction.name));
+				for (var i = 0; i < toRemove.length; i++) {
+					this.character.removeDistinction(toRemove[i]);
+				}
+
+				this.character.selectedTriggers = <boolean[][]> _.cloneDeep(this.distinctionsPreGeneratedState.triggers);
+			} else {
+				this.distinctionsPreGeneratedState = state;
+			}
+
 			while (this.allowAddDistinction()) {
 				var categories = _(this.character.distinctions).pluck('category').unique().value();
 				var availableDistinctions = _.filter(this.distinctions.all(), d => !_.contains(categories, d.category));
@@ -205,24 +258,57 @@ module Firefly {
 				var triggerIndex: number = _.random(this.character.selectedTriggers[distinctionIndex].length - 1);
 				this.character.selectedTriggers[distinctionIndex][triggerIndex] = true;
 			}
+			this.distinctionsPostGeneratedState = getState();
 		}
 
 		generateSkills(): void {
+			var getState = () => _.clone(this.steppedUpSkills);
+
+			var state = getState();
+			if (angular.toJson(state) == angular.toJson(this.skillsPostGeneratedState)) {
+				var toRemove = _.difference(this.steppedUpSkills, this.skillsPreGeneratedState);
+				for (var i = 0; i < toRemove.length; i++) {
+					this.stepBackSkill(_.find(this.character.skills, { name: toRemove[i] }));
+				}
+
+				this.character.skills = _.filter(this.character.skills,(skill: Skill) => skill.rating.sideCount() > 4);
+			} else {
+				this.skillsPreGeneratedState = state;
+			}
+
 			while (this.needsSkills()) {
 				var existingSkills = <string[]> _(this.character.skills).pluck('name').filter((skillName:string) => this.canStepUp(skillName)).value();
 				var availableSkills = _.filter(skillList, skillName => this.canStepUp(skillName))
 					.concat(existingSkills).concat(existingSkills).concat(existingSkills).concat(existingSkills);
 
 				var index = _.random(availableSkills.length - 1);
-				console.log(availableSkills, index);
 				var skillName = availableSkills[index];
-				console.log(skillName);
 
 				this.stepUpSkill(this.character.addSkill(skillName));
 			}
+			this.skillsPostGeneratedState = getState();
 		}
 
 		generateAssets(): void {
+			var getState = () => ({ assets: _.clone(this.character.signatureAssets, true), specialities: _(this.character.skills).filter({ boughtSpeciality: true }).pluck('name').value(), specialityCount: this.specialityCount });
+
+			var state = getState();
+			if (angular.toJson(state) == angular.toJson(this.assetsPostGeneratedState)) {
+				this.character.signatureAssets = _.filter(this.character.signatureAssets, asset => _.find(this.assetsPreGeneratedState.assets, asset));
+				var newSpecialities = _.difference(state.specialities, this.assetsPreGeneratedState.specialities);
+
+				for (var i = 0; i < newSpecialities.length; i++) {
+					var skill = _.find(this.character.skills, { name: newSpecialities[i] });
+					skill.boughtSpeciality = false;
+					skill.speciality = null;
+				}
+
+				this.specialityCount = this.assetsPreGeneratedState.specialityCount;
+
+			} else {
+				this.assetsPreGeneratedState = state;
+			}
+
 			while (this.needsAssetsOrSpecialities()) {
 				switch (_.random(3)) {
 					case 0:
@@ -242,6 +328,7 @@ module Firefly {
 				}
 
 			}
+			this.assetsPostGeneratedState = getState();
 		}
 
 		genderText(gender: names.Gender): string {
@@ -306,7 +393,7 @@ module Firefly {
 
 		canStepUp(skillName: string): boolean {
 			var skill = _.find(this.character.skills, { name: skillName });
-			return (!skill || skill.rating.sideCount() < 12) && this.skillPointsUsed() + this.skillPointCost(skillName) <= 9 && this.character.distinctions.length >= 3;
+			return (!skill || skill.rating.sideCount() < 12) && this.skillPointsUsed() + this.skillPointCost(skillName) <= 9;
 		}
 
 		canStepBack(skillName: string): boolean {

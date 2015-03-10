@@ -1,13 +1,13 @@
 ﻿@{
-    Layout = null;
+	Layout = null;
 }
 
 <!DOCTYPE html>
 
 <html>
 <head>
-    <meta name="viewport" content="width=device-width" />
-    <title></title>
+	<meta name="viewport" content="width=device-width" />
+	<title></title>
 	<link href="~/Content/style.css" rel="stylesheet" />
 
 	<script src="~/Scripts/angular.min.js"></script>
@@ -19,18 +19,18 @@
 <body ng-app="firefly">
 	<div ng-controller="fireflyCharacterCreationController as controller">
 		<div>
-			<input type="text" ng-model="controller.character.bio.name" class="characterNameHeading" placeholder="(Name)"/>
+			<input type="text" ng-model="controller.character.bio.name" class="characterNameHeading" placeholder="(Name)" />
 			<small>
 				<button ng-click="controller.generateName()">Generate</button>
 				{{controller.character.bio.system}}
-				<span ng-if="controller.character.bio.system">&mdash;</span> 
-				{{controller.genderText(controller.character.bio.gender)}} 
+				<span ng-if="controller.character.bio.system">&mdash;</span>
+				{{controller.genderText(controller.character.bio.gender)}}
 			</small>
 		</div>
 		<div>
 			<h3 ng-class="{needsSelection: controller.needsAttribute() && controller.showNeeds}">
 				Attributes
-				<button ng-if="controller.needsAttribute()" ng-click="controller.generateAttributes()">Generate</button>
+				<button ng-click="controller.generateAttributes()">Generate</button>
 			</h3>
 			<p style="color: red;" ng-if="controller.needsAttribute() && controller.showNeeds"><em>You need to finish selecting attributes</em></p>
 			<ul class="compressedListing">
@@ -64,12 +64,16 @@
 		<div>
 			<h3 ng-class="{needsSelection: (controller.needsDistinction() || controller.needsDistinctionTriggers()) && controller.showNeeds}">
 				Distinctions
-				<button ng-if="(controller.needsDistinction() || controller.needsDistinctionTriggers())" ng-click="controller.generateDistinctions()">Generate</button>
+				<button ng-click="controller.generateDistinctions()">Generate</button>
 			</h3>
 			<p style="color: red;" ng-if="controller.needsDistinction() && controller.showNeeds"><em>You need to finish selecting distinctions</em></p>
 			<p style="color: red;" ng-if="controller.needsDistinctionTriggers() && controller.showNeeds"><em>You need to finish selecting distinction triggers</em></p>
 			<div ng-repeat="distinctionSlot in controller.character.distinctions track by $index" ng-init="distinctionIndex = $index" class="distinction">
-				<h4>{{distinctionSlot.name}} <span style="padding-left: 12px">d8</span></h4>
+				<h4>
+					{{distinctionSlot.name}}
+					<span style="padding-left: 12px">d8</span>
+					<button ng-click="controller.character.removeDistinction(distinctionSlot)">Remove</button>
+				</h4>
 				<small><em>{{distinctionSlot.description}}</em></small>
 				<p ng-if="distinctionSlot"><input type="checkbox" ng-checked="true" disabled /> Gain 1 Plot Point when you roll a d4 instead of a d8.</p>
 				<p ng-repeat="trigger in distinctionSlot.triggers"><input type="checkbox" ng-disabled="!controller.allowAddTrigger() && !controller.character.selectedTriggers[distinctionIndex][$index]" ng-model="controller.character.selectedTriggers[distinctionIndex][$index]" /> <em>{{trigger.name}}:</em> {{trigger.description}}</p>
@@ -93,7 +97,7 @@
 		<div>
 			<h3 ng-class="{needsSelection: controller.needsSkills() && controller.showNeeds}">
 				Skills
-				<button ng-if="controller.needsSkills()" ng-disabled="controller.needsDistinction()" ng-click="controller.generateSkills()">Generate</button>
+				<button ng-click="controller.generateSkills()">Generate</button>
 			</h3>
 			<p style="color: red;" ng-if="controller.needsSkills() && controller.showNeeds"><em>You need to finish selecting skills</em></p>
 			<p style="color: red;" ng-if="controller.needsAssetsOrSpecialities() && controller.showNeeds"><em>You need to finish selecting specialities or signature assets</em></p>
@@ -113,7 +117,7 @@
 		<div>
 			<h3 ng-class="{needsSelection: controller.needsAssetsOrSpecialities() && controller.showNeeds}">
 				Signature Assets
-				<button ng-if="controller.needsAssetsOrSpecialities()" ng-click="controller.generateAssets()" ng-disabled="controller.needsSkills()">Generate</button>
+				<button ng-click="controller.generateAssets()" ng-disabled="controller.needsSkills()">Generate</button>
 			</h3>
 			<p style="color: red;" ng-if="controller.needsAssetsOrSpecialities() && controller.showNeeds"><em>You need to finish selecting specialities or signature assets</em></p>
 			<p ng-if="!controller.character.signatureAssets.length"><em>None.</em></p>
@@ -126,9 +130,7 @@
 		</div>
 
 		<hr />
-		<button ng-click="controller.isFinished() ? controller.create() : (controller.showNeeds = true)">Finalize</button>
-
-		<pre>{{controller.character | json}}</pre>
+		<button ng-click="controller.isFinished() ? controller.create() : (controller.showNeeds = true)">Download</button>
 	</div>
 </body>
 </html>

@@ -911,6 +911,7 @@
     <Content Include="Views\Home\Index.cshtml" />
     <Content Include="Content\venusrisingrg.ttf" />
     <Content Include="Content\InteractiveCrewAndShipSheets_MWP_DTRPG.pdf" />
+    <None Include="Properties\PublishProfiles\fireflycharactergen.pubxml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>

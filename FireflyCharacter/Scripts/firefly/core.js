@@ -74,9 +74,9 @@ var Firefly;
     })();
     var Attributes = (function () {
         function Attributes() {
-            this.physical = undefined;
-            this.mental = undefined;
-            this.social = undefined;
+            this.physical = null;
+            this.mental = null;
+            this.social = null;
         }
         return Attributes;
     })();
@@ -124,6 +124,18 @@ var Firefly;
             }
             return false;
         };
+        Character.prototype.removeDistinction = function (distinction) {
+            var idx = _.indexOf(this.distinctions, distinction);
+            if (idx == -1)
+                return false;
+            this.distinctions.splice(idx, 1);
+            this.selectedTriggers.splice(idx, 1);
+            for (var index in distinction.highlightedSkills) {
+                var highlightedSkill = this.addSkill(distinction.highlightedSkills[index]);
+                highlightedSkill.rating = highlightedSkill.rating.stepBack();
+            }
+            this.skills = _.filter(this.skills, function (skill) { return skill.rating.sideCount() > 4; });
+        };
         Character.prototype.addSkill = function (skillName) {
             var result = _.find(this.skills, { name: skillName });
             if (result)
@@ -160,6 +172,21 @@ var Firefly;
             this.character.bio = this.bioGenerator('');
         };
         CharacterCreationController.prototype.generateAttributes = function () {
+            var _this = this;
+            var getState = function () { return ({
+                physical: _this.character.attributes.physical,
+                mental: _this.character.attributes.mental,
+                social: _this.character.attributes.social,
+            }); };
+            var state = getState();
+            if (angular.toJson(state) == angular.toJson(this.attributePostGeneratedState)) {
+                this.character.attributes.physical = this.attributePreGeneratedState.physical;
+                this.character.attributes.mental = this.attributePreGeneratedState.mental;
+                this.character.attributes.social = this.attributePreGeneratedState.social;
+            }
+            else {
+                this.attributePreGeneratedState = state;
+            }
             var dieCodes = _([DieCode.d6, DieCode.d8, DieCode.d10]);
             for (var attribute in this.character.attributes) {
                 if (!this.character.attributes[attribute]) {
@@ -168,8 +195,22 @@ var Firefly;
                     this.character.attributes[attribute] = options[index];
                 }
             }
+            this.attributePostGeneratedState = getState();
         };
         CharacterCreationController.prototype.generateDistinctions = function () {
+            var _this = this;
+            var getState = function () { return ({ distinctions: _.pluck(_this.character.distinctions, 'name'), triggers: _.cloneDeep(_this.character.selectedTriggers) }); };
+            var state = getState();
+            if (angular.toJson(state) == angular.toJson(this.distinctionsPostGeneratedState)) {
+                var toRemove = _.filter(this.character.distinctions, function (distinction) { return !_.contains(_this.distinctionsPreGeneratedState.distinctions, distinction.name); });
+                for (var i = 0; i < toRemove.length; i++) {
+                    this.character.removeDistinction(toRemove[i]);
+                }
+                this.character.selectedTriggers = _.cloneDeep(this.distinctionsPreGeneratedState.triggers);
+            }
+            else {
+                this.distinctionsPreGeneratedState = state;
+            }
             while (this.allowAddDistinction()) {
                 var categories = _(this.character.distinctions).pluck('category').unique().value();
                 var availableDistinctions = _.filter(this.distinctions.all(), function (d) { return !_.contains(categories, d.category); });
@@ -180,20 +221,48 @@ var Firefly;
                 var triggerIndex = _.random(this.character.selectedTriggers[distinctionIndex].length - 1);
                 this.character.selectedTriggers[distinctionIndex][triggerIndex] = true;
             }
+            this.distinctionsPostGeneratedState = getState();
         };
         CharacterCreationController.prototype.generateSkills = function () {
             var _this = this;
+            var getState = function () { return _.clone(_this.steppedUpSkills); };
+            var state = getState();
+            if (angular.toJson(state) == angular.toJson(this.skillsPostGeneratedState)) {
+                var toRemove = _.difference(this.steppedUpSkills, this.skillsPreGeneratedState);
+                for (var i = 0; i < toRemove.length; i++) {
+                    this.stepBackSkill(_.find(this.character.skills, { name: toRemove[i] }));
+                }
+                this.character.skills = _.filter(this.character.skills, function (skill) { return skill.rating.sideCount() > 4; });
+            }
+            else {
+                this.skillsPreGeneratedState = state;
+            }
             while (this.needsSkills()) {
                 var existingSkills = _(this.character.skills).pluck('name').filter(function (skillName) { return _this.canStepUp(skillName); }).value();
                 var availableSkills = _.filter(skillList, function (skillName) { return _this.canStepUp(skillName); }).concat(existingSkills).concat(existingSkills).concat(existingSkills).concat(existingSkills);
                 var index = _.random(availableSkills.length - 1);
-                console.log(availableSkills, index);
                 var skillName = availableSkills[index];
-                console.log(skillName);
                 this.stepUpSkill(this.character.addSkill(skillName));
             }
+            this.skillsPostGeneratedState = getState();
         };
         CharacterCreationController.prototype.generateAssets = function () {
+            var _this = this;
+            var getState = function () { return ({ assets: _.clone(_this.character.signatureAssets, true), specialities: _(_this.character.skills).filter({ boughtSpeciality: true }).pluck('name').value(), specialityCount: _this.specialityCount }); };
+            var state = getState();
+            if (angular.toJson(state) == angular.toJson(this.assetsPostGeneratedState)) {
+                this.character.signatureAssets = _.filter(this.character.signatureAssets, function (asset) { return _.find(_this.assetsPreGeneratedState.assets, asset); });
+                var newSpecialities = _.difference(state.specialities, this.assetsPreGeneratedState.specialities);
+                for (var i = 0; i < newSpecialities.length; i++) {
+                    var skill = _.find(this.character.skills, { name: newSpecialities[i] });
+                    skill.boughtSpeciality = false;
+                    skill.speciality = null;
+                }
+                this.specialityCount = this.assetsPreGeneratedState.specialityCount;
+            }
+            else {
+                this.assetsPreGeneratedState = state;
+            }
             while (this.needsAssetsOrSpecialities()) {
                 switch (_.random(3)) {
                     case 0:
@@ -212,6 +281,7 @@ var Firefly;
                         break;
                 }
             }
+            this.assetsPostGeneratedState = getState();
         };
         CharacterCreationController.prototype.genderText = function (gender) {
             return Firefly.names.Gender[gender];
@@ -267,7 +337,7 @@ var Firefly;
         };
         CharacterCreationController.prototype.canStepUp = function (skillName) {
             var skill = _.find(this.character.skills, { name: skillName });
-            return (!skill || skill.rating.sideCount() < 12) && this.skillPointsUsed() + this.skillPointCost(skillName) <= 9 && this.character.distinctions.length >= 3;
+            return (!skill || skill.rating.sideCount() < 12) && this.skillPointsUsed() + this.skillPointCost(skillName) <= 9;
         };
         CharacterCreationController.prototype.canStepBack = function (skillName) {
             return _.contains(this.steppedUpSkills, skillName);
