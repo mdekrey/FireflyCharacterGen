@@ -141,7 +141,7 @@ var Firefly;
         return Character;
     })();
     var CharacterCreationController = (function () {
-        function CharacterCreationController($scope, distinctions, skillList, bioGenerator) {
+        function CharacterCreationController($scope, distinctions, skillList, bioGenerator, $http) {
             this.dieCodes = DieCode.availableDieCodes();
             this.character = new Character();
             this.steppedUpSkills = [];
@@ -154,6 +154,7 @@ var Firefly;
             this.distinctions = distinctions;
             this.skillList = skillList;
             this.bioGenerator = bioGenerator;
+            this.$http = $http;
         }
         CharacterCreationController.prototype.generateName = function () {
             this.character.bio = this.bioGenerator('');
@@ -326,7 +327,11 @@ var Firefly;
         CharacterCreationController.prototype.isFinished = function () {
             return !this.needsAttribute() && !this.needsAssetsOrSpecialities() && !this.needsSkills() && !this.needsDistinctionTriggers() && !this.needsDistinction();
         };
-        CharacterCreationController.$inject = ['$scope', 'distinctions', 'skillList', 'bioGenerator'];
+        CharacterCreationController.prototype.create = function () {
+            this.$http.post('/api/generation/character', this.character).success(function (data) {
+            });
+        };
+        CharacterCreationController.$inject = ['$scope', 'distinctions', 'skillList', 'bioGenerator', '$http'];
         return CharacterCreationController;
     })();
     var fireflyModule = angular.module('firefly', ['fireflyDistinctions', 'fireflyNames']);

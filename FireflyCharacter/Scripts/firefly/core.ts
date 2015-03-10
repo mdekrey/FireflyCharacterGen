@@ -165,14 +165,16 @@ module Firefly {
 		private specialityCount: number = 0;
 		showNeeds: boolean = false;
 		private bioGenerator: (system: string) => names.Bio;
+		private $http: ng.IHttpService;
 
-		static $inject = ['$scope', 'distinctions', 'skillList', 'bioGenerator'];
+		static $inject = ['$scope', 'distinctions', 'skillList', 'bioGenerator', '$http'];
 
-		constructor($scope: ng.IScope, distinctions: distinctions.DistinctionSet, skillList: string[], bioGenerator: (system: string) => names.Bio) {
+		constructor($scope: ng.IScope, distinctions: distinctions.DistinctionSet, skillList: string[], bioGenerator: (system: string) => names.Bio, $http: ng.IHttpService) {
 			this.$scope = $scope;
 			this.distinctions = distinctions;
 			this.skillList = skillList;
 			this.bioGenerator = bioGenerator;
+			this.$http = $http;
 		}
 
 		generateName(): void {
@@ -379,6 +381,12 @@ module Firefly {
 				!this.needsSkills() &&
 				!this.needsDistinctionTriggers() &&
 				!this.needsDistinction();
+		}
+
+		create() {
+			this.$http.post('/api/generation/character', this.character).success(function (data) {
+
+			});
 		}
 	}
 	

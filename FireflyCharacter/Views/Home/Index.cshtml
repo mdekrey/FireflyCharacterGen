@@ -127,6 +127,8 @@
 
 		<hr />
 		<button ng-click="controller.isFinished() ? controller.create() : (controller.showNeeds = true)">Finalize</button>
+
+		<pre>{{controller.character | json}}</pre>
 	</div>
 </body>
 </html>
