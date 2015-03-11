@@ -100,6 +100,20 @@ module Firefly {
 			}
 			this.name = name;
 		}
+
+		stepUp(): void {
+			this.rating = this.rating.stepUp();
+			if (this.name == 'Know') {
+				this.boughtSpeciality = true;
+			}
+		}
+
+		stepBack(): void {
+			this.rating = this.rating.stepBack();
+			if (this.name == 'Know' && this.rating.sideCount() < 6) {
+				this.boughtSpeciality = false;
+			}
+		}
 		
 		allowSpeciality(): boolean {
 			return this.rating.sideCount() >= 6;
@@ -129,7 +143,7 @@ module Firefly {
 				this.distinctions.push(distinction);
 				for (var index in distinction.highlightedSkills) {
 					var highlightedSkill = this.addSkill(distinction.highlightedSkills[index]);
-					highlightedSkill.rating = highlightedSkill.rating.stepUp();
+					highlightedSkill.stepUp();
 				}
 				this.selectedTriggers.push(_.map(distinction.triggers,(trigger) => false));
 				return true;
@@ -146,7 +160,7 @@ module Firefly {
 
 			for (var index in distinction.highlightedSkills) {
 				var highlightedSkill = this.addSkill(distinction.highlightedSkills[index]);
-				highlightedSkill.rating = highlightedSkill.rating.stepBack();
+				highlightedSkill.stepBack();
 			}
 
 			this.skills = _.filter(this.skills,(skill: Skill) => skill.rating.sideCount() > 4);
@@ -384,7 +398,7 @@ module Firefly {
 
 		stepUpSkill(skill: Skill): boolean {
 			if (this.canStepUp(skill.name)) {
-				skill.rating = skill.rating.stepUp();
+				skill.stepUp();
 				this.steppedUpSkills.push(skill.name);
 				return true;
 			}
@@ -403,7 +417,10 @@ module Firefly {
 		stepBackSkill(skill: Skill): boolean {
 			if (this.canStepBack(skill.name)) {
 				var idx = _.indexOf(this.steppedUpSkills, skill.name);
-				skill.rating = skill.rating.stepBack();
+				skill.stepBack();
+				if (skill.rating.sideCount() < 6 && skill.boughtSpeciality) {
+					this.sellSpeciality(skill);
+				}
 				this.steppedUpSkills.splice(idx, 1);
 			}
 			return false;
@@ -417,6 +434,17 @@ module Firefly {
 			if (this.canBuySpeciality() && !skill.boughtSpeciality && skill.allowSpeciality()) {
 				skill.boughtSpeciality = true;
 				this.specialityCount++;
+				return true;
+			}
+			return false;
+		}
+
+		sellSpeciality(skill: Skill): boolean {
+			if (skill.boughtSpeciality) {
+				skill.boughtSpeciality = false;
+				if (skill.name != 'Know') {
+					this.specialityCount--;
+				}
 				return true;
 			}
 			return false;

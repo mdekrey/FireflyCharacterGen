@@ -52,6 +52,10 @@ ul.compressedListing {
 
 ul.compressedListing li {
 	border-bottom: 1px black solid;
+
+	-webkit-column-break-inside: avoid; /* Chrome, Safari */
+    page-break-inside: avoid;           /* Theoretically FF 20+ */
+    break-inside: avoid-column;         /* IE 11 */
 }
 
 ul.compressedListing li label {
@@ -95,3 +99,12 @@ ul.compressedListing li input {
     content: none;
 }
 
+
+.clearfix:before,
+.clearfix:after {
+  content: " ";
+  display: table;
+}
+.clearfix:after {
+  clear: both;
+}

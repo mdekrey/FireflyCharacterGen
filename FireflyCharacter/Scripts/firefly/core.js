@@ -88,6 +88,18 @@ var Firefly;
             }
             this.name = name;
         }
+        Skill.prototype.stepUp = function () {
+            this.rating = this.rating.stepUp();
+            if (this.name == 'Know') {
+                this.boughtSpeciality = true;
+            }
+        };
+        Skill.prototype.stepBack = function () {
+            this.rating = this.rating.stepBack();
+            if (this.name == 'Know' && this.rating.sideCount() < 6) {
+                this.boughtSpeciality = false;
+            }
+        };
         Skill.prototype.allowSpeciality = function () {
             return this.rating.sideCount() >= 6;
         };
@@ -117,7 +129,7 @@ var Firefly;
                 this.distinctions.push(distinction);
                 for (var index in distinction.highlightedSkills) {
                     var highlightedSkill = this.addSkill(distinction.highlightedSkills[index]);
-                    highlightedSkill.rating = highlightedSkill.rating.stepUp();
+                    highlightedSkill.stepUp();
                 }
                 this.selectedTriggers.push(_.map(distinction.triggers, function (trigger) { return false; }));
                 return true;
@@ -132,7 +144,7 @@ var Firefly;
             this.selectedTriggers.splice(idx, 1);
             for (var index in distinction.highlightedSkills) {
                 var highlightedSkill = this.addSkill(distinction.highlightedSkills[index]);
-                highlightedSkill.rating = highlightedSkill.rating.stepBack();
+                highlightedSkill.stepBack();
             }
             this.skills = _.filter(this.skills, function (skill) { return skill.rating.sideCount() > 4; });
         };
@@ -329,7 +341,7 @@ var Firefly;
         };
         CharacterCreationController.prototype.stepUpSkill = function (skill) {
             if (this.canStepUp(skill.name)) {
-                skill.rating = skill.rating.stepUp();
+                skill.stepUp();
                 this.steppedUpSkills.push(skill.name);
                 return true;
             }
@@ -345,7 +357,10 @@ var Firefly;
         CharacterCreationController.prototype.stepBackSkill = function (skill) {
             if (this.canStepBack(skill.name)) {
                 var idx = _.indexOf(this.steppedUpSkills, skill.name);
-                skill.rating = skill.rating.stepBack();
+                skill.stepBack();
+                if (skill.rating.sideCount() < 6 && skill.boughtSpeciality) {
+                    this.sellSpeciality(skill);
+                }
                 this.steppedUpSkills.splice(idx, 1);
             }
             return false;
@@ -357,6 +372,16 @@ var Firefly;
             if (this.canBuySpeciality() && !skill.boughtSpeciality && skill.allowSpeciality()) {
                 skill.boughtSpeciality = true;
                 this.specialityCount++;
+                return true;
+            }
+            return false;
+        };
+        CharacterCreationController.prototype.sellSpeciality = function (skill) {
+            if (skill.boughtSpeciality) {
+                skill.boughtSpeciality = false;
+                if (skill.name != 'Know') {
+                    this.specialityCount--;
+                }
                 return true;
             }
             return false;
