@@ -1,0 +1,110 @@
+﻿body {
+	font-family: arial;
+}
+
+dice {
+	
+	position:absolute;
+	top:0px;
+	left:3em;
+}
+
+@font-face {
+    font-family: venusRising;
+    src: url(venusrisingrg.ttf);
+}
+
+.characterNameHeading {
+	display:block;
+	border: 0px;
+	width: 100%;
+	font-family:venusRising;
+	font-size: 2em;
+	color: #3355EE;
+}
+
+h3 {
+	
+	font-family:venusRising;
+	background-color: #9999BB;
+	color: white;
+	text-align: left;
+	padding: .25em;
+	font-size:.75em;
+	
+	text-transform: uppercase;
+}
+
+h3.needsSelection {
+	background-color: #BB9999;
+}
+
+ul.compressedListing {
+	
+	list-style-type: none;
+	padding: 0px;
+	font-variant: small-caps;
+	
+	-webkit-column-count: 3; /* Chrome, Safari, Opera */
+	-moz-column-count: 3; /* Firefox */
+	column-count: 3;
+}
+
+ul.compressedListing li {
+	border-bottom: 1px black solid;
+
+	-webkit-column-break-inside: avoid; /* Chrome, Safari */
+    page-break-inside: avoid;           /* Theoretically FF 20+ */
+    break-inside: avoid-column;         /* IE 11 */
+}
+
+ul.compressedListing li label {
+	display: inline-block;
+	min-width: 45%;
+}
+
+ul.compressedListing li input {
+	float: right;
+	width: 40%;
+}
+
+.distinction {
+	margin-bottom: 1em;
+}
+
+.distinction h4 {
+	font-size: 1em;
+	font-variant: small-caps;
+	margin: 0px;
+	padding: 0px;
+}
+
+.skills {
+	display: inline;
+	font-weight: bold;
+	padding-left: 0px;
+}
+
+.skills li {
+	list-style-type: none;
+	display: inline;
+	font-variant:small-caps;
+}
+
+.skills li::after {
+    content: ', ';
+}
+
+.skills li:last-child::after {
+    content: none;
+}
+
+
+.clearfix:before,
+.clearfix:after {
+  content: " ";
+  display: table;
+}
+.clearfix:after {
+  clear: both;
+}

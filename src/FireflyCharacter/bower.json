@@ -1,0 +1,16 @@
+{
+	"name": "WebApplication",
+	"private": true,
+	"dependencies": {
+		"angularjs": "~1.3.14",
+		"lodash": "~3.5.0"
+	},
+	"exportsOverride": {
+		"angularjs": {
+			"js": [ "**/*.min.*", "**/*.js" ]
+		},
+		"lodash": {
+			"js": [ "**/*.min.*", "**/*.js" ]
+		}
+	}
+}

@@ -19,3 +19,9 @@ packages/**/*
 */App_Data
 *.sln.ide
 .vs
+src/*/wwwroot
+src/*/intermediate
+src/*/bower_components
+src/*/node_modules
+artifacts
+src/*/Assets/**/*.js
